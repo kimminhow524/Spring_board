@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.koreait.mapper.BoardMapper">
+
+	<sql id="criteria">
+		<if test="keyword != null and type != null">
+			<trim prefix="(" suffix=") AND" prefixOverrides="OR">
+				<foreach item="type" collection="typeArr">
+					<trim prefix="OR">
+						<choose>
+							<when test="type == 'T'.toString()">
+								(TITLE LIKE '%' || #{keyword} || '%')
+							</when>
+							<when test="type == 'C'.toString()">
+								(CONTENT LIKE '%' || #{keyword} || '%')
+							</when>
+							<when test="type == 'W'.toString()">
+								(WRITER LIKE '%' || #{keyword} || '%')
+							</when>
+						</choose>
+					</trim>
+				</foreach>
+			</trim>
+		</if>
+	</sql>
+
+	<select id="getTotal" resultType="_int">
+		SELECT COUNT(*) FROM TBL_BOARD WHERE
+		<include refid="criteria"></include>
+		BNO > 0
+	</select>
+
+	<select id="getList" resultType="com.koreait.domain.BoardVO">
+		<![CDATA[
+			SELECT * FROM TBL_BOARD WHERE BNO > 0
+		]]>
+	</select>
+	
+	<select id="getListWithPaging" resultType="com.koreait.domain.BoardVO">
+		<![CDATA[
+			SELECT BNO, TITLE, CONTENT, WRITER, REGDATE, UPDATEDATE
+			FROM
+				(SELECT /*+ INDEX_DESC(TBL_BOARD PK_BOARD)*/
+				ROWNUM RN, BNO, TITLE, CONTENT, WRITER, REGDATE, UPDATEDATE
+				FROM TBL_BOARD
+				WHERE 
+		]]>
+			<include refid="criteria"></include>
+		<![CDATA[	
+				ROWNUM <= #{pageNum} * #{amount})
+			WHERE RN > (#{pageNum} - 1) * #{amount}
+		]]>
+		<!--
+			두 가지의 기능(데이터 개수 처리, 검색 조건 처리)이 하나의 쿼리 안에 있기 때문에
+			가독성과 유지보수가 좋지 않다. 따라서 sql태그로 분리한 후 include를 사용한다.
+			또한 검색 전체 개수를 알아야지만 페이징 처리를 할 수 있으므로 getTotal에도 똑같이
+			검색 조건 처리를 해준다.
+		 -->
+	</select>
+	
+	<insert id="insert">
+		INSERT INTO TBL_BOARD (BNO, TITLE, CONTENT, WRITER)
+		VALUES (SEQ_BOARD.NEXTVAL, #{title}, #{content}, #{writer})
+	</insert>
+	
+	<insert id="insertSelectKey_bno">
+		<selectKey keyProperty="bno" order="BEFORE" resultType="long">
+			SELECT SEQ_BOARD.NEXTVAL FROM DUAL
+		</selectKey>
+		
+		INSERT INTO TBL_BOARD (BNO, TITLE, CONTENT, WRITER)
+		VALUES (#{bno}, #{title}, #{content}, #{writer})
+	</insert>
+	
+	<select id="read" resultType="com.koreait.domain.BoardVO">
+		SELECT * FROM TBL_BOARD WHERE BNO = #{bno}
+	</select>
+	
+	<delete id="delete">
+		DELETE FROM TBL_BOARD WHERE BNO = #{bno}
+	</delete>
+	
+	<update id="update">
+		UPDATE TBL_BOARD
+		SET TITLE = #{title}, CONTENT = #{content}, WRITER = #{writer},
+		UPDATEDATE = SYSDATE
+		WHERE BNO = #{bno}
+	</update>
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
